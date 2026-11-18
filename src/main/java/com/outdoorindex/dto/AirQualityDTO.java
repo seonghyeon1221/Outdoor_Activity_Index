@@ -10,7 +10,7 @@ import com.outdoorindex.enums.DustGrade;
  */
 public class AirQualityDTO {
 
-    private String stationName;                         // 측정소 이름 (시·도 평균이면 null)
+    private String stationName;                         // 측정소 이름 (시·도 평균이면 null) → RegionService 입력으로 이어짐
     private Integer pm10;                               // 미세먼지 PM10 (㎍/㎥), 없으면 null
     private Integer pm25;                               // 초미세먼지 PM2.5 (㎍/㎥), 없으면 null
     private DustGrade pm10Grade = DustGrade.UNKNOWN;    // PM10 등급

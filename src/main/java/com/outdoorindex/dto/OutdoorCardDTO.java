@@ -9,6 +9,7 @@ import java.util.List;
  * 결과 화면(result.jsp)에 넘기는 최종 카드.
  * - 만드는 곳: OutdoorCardService (A)
  * - request 속성 이름: "card"  → JSP에서 ${card.xxx}
+ * - region은 API ①의 측정소명으로 찾은 위치 (API ① 실패 시 시·도 대표 지점)
  * - 규칙: 한쪽 API가 실패하면 그쪽 DTO는 null, 대신 airError / weatherError에 오류 코드
  */
 public class OutdoorCardDTO {
@@ -19,6 +20,7 @@ public class OutdoorCardDTO {
     private OutdoorIndexResult index;                                 // 야외활동 지수 (둘 다 실패하면 null)
     private ErrorCode airError;                                       // 미세먼지 오류 (정상이면 null)
     private ErrorCode weatherError;                                   // 날씨 오류 (정상이면 null)
+    private List<String> stationNames = new ArrayList<>();            // API ①이 돌려준 같은 시·도 측정소 목록 ("다른 측정소 보기" 링크용)
     private List<HourlyForecastDTO> hourlyForecasts = new ArrayList<>(); // 시간별 예보 (확장용, 지금은 빈 리스트)
 
     public OutdoorCardDTO() {}
@@ -41,6 +43,8 @@ public class OutdoorCardDTO {
     public void setAirError(ErrorCode airError) { this.airError = airError; }
     public ErrorCode getWeatherError() { return weatherError; }
     public void setWeatherError(ErrorCode weatherError) { this.weatherError = weatherError; }
+    public List<String> getStationNames() { return stationNames; }
+    public void setStationNames(List<String> stationNames) { this.stationNames = stationNames == null ? new ArrayList<>() : stationNames; }
     public List<HourlyForecastDTO> getHourlyForecasts() { return hourlyForecasts; }
     public void setHourlyForecasts(List<HourlyForecastDTO> hourlyForecasts) { this.hourlyForecasts = hourlyForecasts == null ? new ArrayList<>() : hourlyForecasts; }
 }
