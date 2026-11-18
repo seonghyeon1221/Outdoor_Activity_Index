@@ -1,0 +1,23 @@
+# API 키가 들어있는 설정 파일 (절대 커밋 금지)
+src/main/resources/api.properties
+
+# 빌드 결과물
+/build/
+/bin/
+/out/
+/target/
+*.class
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+.metadata/
+
+# OS
+.DS_Store
+Thumbs.db
