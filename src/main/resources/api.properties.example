@@ -1,0 +1,19 @@
+# ============================================================
+# api.properties 템플릿
+# 1) 이 파일을 복사해서 같은 폴더에 api.properties 로 저장
+# 2) service.key 에 본인이 발급받은 키 입력
+# 3) api.properties 는 .gitignore 대상이라 깃허브에 올라가지 않음
+# ============================================================
+
+# 공공데이터포털 서비스키 (Decoding 키 기준으로 입력, 코드에서 1번만 URL 인코딩)
+service.key=
+
+# 에어코리아 대기오염정보
+airkorea.endpoint=https://apis.data.go.kr/B552584/ArpltnInforInqireSvc
+
+# 기상청 단기예보 조회서비스
+kma.endpoint=https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+
+# 타임아웃 (밀리초)
+http.connect.timeout=5000
+http.request.timeout=10000
