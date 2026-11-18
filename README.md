@@ -254,14 +254,12 @@ Outdoor_Activity_Index/
 
 ## 👥 역할 분담
 
-어려운 순서대로 A → D
-
-| 역할 | 담당 | 난이도 | 하는 일 | 만들 파일 |
-|---|---|---|---|---|
-| **A** 공통 기반 + 통합 | | ★★★★ | 레포 관리, API 요청 공용 도구, 설정 읽기, 오류 처리, 최종 결합 | `SearchController` `EncodingFilter` `OutdoorCardService` `ApiConfig` `HttpClientUtil` `ApiResponseValidator` `web.xml` |
-| **B** 날씨 (기상청) | | ★★★ | 발표 시간 계산, 실황 + 예보 조회, 코드 → 글자 변환 | `WeatherService` `BaseTimeCalculator` |
-| **C** 지역 + 미세먼지 | | ★★ | 지역 표 CSV 작성, 지역 찾기, 시도별 미세먼지 → 구 매칭 / 평균 | `RegionService` `AirQualityService` `region_grid.csv` |
-| **D** 판정 + 화면 | | ★ | 등급 계산, 야외활동 지수 판정, JSP 화면 4개 + CSS | `OutdoorIndexPolicy` `DustGradeCalculator` `*.jsp` `style.css` |
+| 역할 | 담당 | 하는 일 | 만들 파일 |
+|---|---|---|---|
+| **A** 공통 기반 + 통합 | | 레포 관리, API 요청 공용 도구, 설정 읽기, 오류 처리, 최종 결합 | `SearchController` `EncodingFilter` `OutdoorCardService` `ApiConfig` `HttpClientUtil` `ApiResponseValidator` `web.xml` |
+| **B** 날씨 (기상청) | | 발표 시간 계산, 실황 + 예보 조회, 코드 → 글자 변환 | `WeatherService` `BaseTimeCalculator` |
+| **C** 지역 + 미세먼지 | | 지역 표 CSV 작성, 지역 찾기, 시도별 미세먼지 → 구 매칭 / 평균 | `RegionService` `AirQualityService` `region_grid.csv` |
+| **D** 판정 + 화면 | | 등급 계산, 야외활동 지수 판정, JSP 화면 4개 + CSS | `OutdoorIndexPolicy` `DustGradeCalculator` `*.jsp` `style.css` |
 
 ### 서로 주고받는 메서드 (이름 고정)
 ```java
