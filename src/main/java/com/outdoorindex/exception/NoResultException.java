@@ -3,8 +3,8 @@ package com.outdoorindex.exception;
 import com.outdoorindex.enums.ErrorCode;
 
 /**
- * 지역 표에서 검색한 지역을 찾지 못했을 때.
- * - 던지는 곳: RegionService (C)
+ * 검색 결과가 없을 때 (시·도 값이 목록에 없거나, API ①이 돌려준 측정소가 0건).
+ * - 던지는 곳: AirQualityService, RegionService (C)
  * - 받는 곳: SearchController (A) → noResult.jsp
  */
 public class NoResultException extends OutdoorException {

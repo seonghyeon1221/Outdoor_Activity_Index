@@ -8,7 +8,7 @@ OpenAPI 융합 팀 프로젝트 (2팀) · 서버 구축 관리
 ```
 📍 서울 중구                                     17:00 기준
 ┌────────┐
-│  보통   │  가벼운 산책이나 운동하기 괜찮은 날이에요
+│  좋음   │  산책이나 운동하기 좋은 날이에요
 └────────┘
 미세먼지  PM10 45 (보통) · PM2.5 20 (보통)
 날씨     ☀ 맑음 · 12℃ · 습도 45% · 강수 없음 · 바람 2.1m/s
@@ -37,13 +37,28 @@ OpenAPI 융합 팀 프로젝트 (2팀) · 서버 구축 관리
 
 | 기능 | 설명 |
 |---|---|
-| 지역 검색 | 시·도 선택 + 시군구 입력 (시군구는 선택 사항) |
+| 지역 검색 | 시·도 선택 (필수) + 측정소/구 이름 (선택) |
 | 미세먼지 조회 | PM10, PM2.5 수치와 환경부 기준 등급 |
 | 날씨 조회 | 하늘 상태, 기온, 습도, 강수형태, 풍속 |
-| 카드 결합 | 같은 지역의 미세먼지와 날씨를 한 장의 카드로 표시 |
+| API 연결 (융합) | 에어코리아가 돌려준 **측정소**의 위치로 기상청 날씨를 조회 |
+| 카드 결합 | 같은 위치의 미세먼지와 날씨를 한 장의 카드로 표시 |
+| 다른 측정소 보기 | 에어코리아가 돌려준 같은 시·도 측정소 목록을 링크로 표시 → 누르면 그 측정소로 다시 조회 |
 | 야외활동 지수 | 두 정보를 합쳐 좋음 / 주의 / 나쁨 판정 + 추천 문구 + 감점 사유 |
 | 부분 실패 처리 | 한쪽 API가 실패해도 성공한 정보는 그대로 표시 |
-| 확장 준비 | 시간대별 추이, 내일 미세먼지 예보 (구조만 준비) |
+| 확장 (선택) | 여러 지역 비교, 시간대별 추이 (구조만 준비) · DB 즐겨찾기/검색기록은 미사용 |
+
+### 📋 과제 공통 요구사항 대응
+| 교수님 요구사항 | 우리 프로젝트 |
+|---|---|
+| 서로 다른 2개 Open API 융합 (단순 나열 금지) | 에어코리아 결과(측정소명) → 기상청 입력(nx, ny) |
+| 두 API가 좌표·검색어·ID로 연결 | 검색어(시·도) → ID(측정소명) → 좌표(격자) |
+| 기술 스택 JSP + HttpClient + Gson | JSP + `java.net.http.HttpClient` + Gson |
+| Model 1 또는 Model 2 선택 | **Model 2** (Servlet → Service → JSP) |
+| 검색/입력 → 결과 화면 | `search.jsp` → `result.jsp` |
+| 결과 없음·호출 실패 등 예외 처리 | [예외 처리](#-예외-처리) 표 참고 |
+| 각 API 가입 후 인증키 발급 | 팀원 각자 발급, `api.properties` 로 관리 |
+| 한글 검색은 URL 인코딩(UTF-8) | `URLEncoder.encode(값, UTF_8)` + 인코딩 필터 |
+| DB(즐겨찾기·검색기록) 선택 | 이번에는 미사용 (확장 항목) |
 
 ---
 
@@ -98,32 +113,52 @@ https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst?servic
 
 ## 🔄 동작 흐름
 
+### 🔗 융합 포인트
+교수님 공통 요구사항: **"한 API의 결과가 다른 API의 입력으로 이어져야 함 (좌표·검색어·ID로 연결) — 단순 나열은 융합이 아님"**
+
+우리 프로젝트의 연결 고리는 **측정소명(ID)** 이에요.
 ```
-사용자: "서울" + "중구" 검색
+시·도 검색어 ─▶ ① 에어코리아 ─▶ 측정소명(ID) ─▶ 측정소 위치 표 ─▶ nx, ny ─▶ ② 기상청
+                    │                                                        │
+                    └──────── 미세먼지 ──────┐          ┌───── 날씨 ──────────┘
+                                             ▼          ▼
+                                       야외활동 지수 (좋음 / 주의 / 나쁨)
+```
+1. **검색어 연결** — 사용자가 고른 시·도로 에어코리아를 조회
+2. **ID 연결** — 에어코리아가 돌려준 측정소명으로 기상청이 조회할 위치(nx, ny)를 결정
+3. **시각화 연결** — 두 결과를 합쳐 어느 API에도 없는 새 지표(야외활동 지수)를 만듦
+4. **검색어 재연결** — 에어코리아가 돌려준 측정소 목록이 다음 검색의 링크가 됨
+
+### 요청 한 번의 흐름
+```
+사용자: 시·도 "서울" + 측정소 "중구" (측정소는 선택)
         │
         ▼
-SearchController ───────────────▶ 입력이 비었으면 search.jsp + 안내 문구
+SearchController ────────────────▶ 시·도가 비었으면 search.jsp + 안내 문구
         │
         ▼
 OutdoorCardService
         │
-        ├─▶ RegionService       region_grid.csv 에서 (서울, 중구) → nx=60, ny=127
-        │                       없으면 → noResult.jsp
+        ├─① AirQualityService   getCtprvnRltmMesureDnsty(sidoName=서울)
+        │                       → 서울 측정소 목록 + 미세먼지 (0건이면 noResult.jsp)
+        │                       → "중구" 측정소 선택 (미입력·불일치면 시·도 평균)
         │
-        ├─▶ AirQualityService   getCtprvnRltmMesureDnsty(sidoName=서울)
-        │                       → 측정소 목록 중 "중구" 선택 (없으면 시·도 평균)
+        ├─  RegionService       API ①의 측정소명 "중구" → station_grid.csv → nx=60, ny=127
+        │                       (표에 없으면 시·도 대표 지점)
         │
-        ├─▶ WeatherService      getUltraSrtNcst + getUltraSrtFcst (nx, ny)
+        ├─② WeatherService      getUltraSrtNcst + getUltraSrtFcst (nx, ny)
         │
-        └─▶ OutdoorIndexPolicy  미세먼지 + 날씨 → 좋음 / 주의 / 나쁨
+        └─  OutdoorIndexPolicy  미세먼지 + 날씨 → 좋음 / 주의 / 나쁨
         │
         ▼
-OutdoorCardDTO ──▶ result.jsp (카드 한 장)
+OutdoorCardDTO ──▶ result.jsp (카드 한 장 + 같은 시·도 다른 측정소 링크)
 ```
 
-**왜 좌표 계산 대신 "지역 표"를 쓰나요?**
-에어코리아는 시·도 이름으로, 기상청은 격자 번호(nx, ny)로 위치를 받아요.
-기상청이 제공하는 지역별 격자 엑셀을 `region_grid.csv` 로 만들어 두면, 복잡한 좌표 변환 공식 없이 표에서 찾기만 하면 돼요.
+> API ①이 실패하면 측정소를 알 수 없으므로, 시·도 대표 지점으로 날씨만 보여줘요.
+
+**왜 좌표 계산 대신 "측정소 위치 표"를 쓰나요?**
+에어코리아 응답에는 측정소 이름만 있고, 기상청은 격자 번호(nx, ny)로 위치를 받아요.
+기상청이 제공하는 격자 엑셀을 보고 측정소별 nx, ny를 `station_grid.csv` 로 만들어 두면, 복잡한 좌표 변환 공식 없이 표에서 찾기만 하면 돼요.
 
 ---
 
@@ -202,7 +237,7 @@ Outdoor_Activity_Index/
 ├─ docs/
 │  ├─ PROMPT.md                                ✅ AI 코드 생성용 요구사항 프롬프트
 │  ├─ DTO_CONTRACT.md                          ✅ DTO 확정본 설명서
-│  └─ TEAM_GUIDE.pdf                           ✅ 팀원용 가이드 (비전공자용)
+│  └─ TEAM_GUIDE.pdf                           ✅ 팀원용 가이드
 │
 └─ src/main/
    ├─ java/com/outdoorindex/
@@ -213,8 +248,8 @@ Outdoor_Activity_Index/
    │  ├─ service/
    │  │  ├─ OutdoorCardService.java            ⬜ (A) 두 결과 합치기 + 부분 실패
    │  │  ├─ WeatherService.java                ⬜ (B) 초단기실황 + 초단기예보
-   │  │  ├─ RegionService.java                 ⬜ (C) 지역 표에서 nx, ny 찾기
-   │  │  └─ AirQualityService.java             ⬜ (C) 시도별 미세먼지 → 구 찾기
+   │  │  ├─ RegionService.java                 ⬜ (C) 측정소명 → nx, ny 변환
+   │  │  └─ AirQualityService.java             ⬜ (C) 시도별 미세먼지 → 측정소 선택
    │  ├─ policy/
    │  │  └─ OutdoorIndexPolicy.java            ⬜ (D) 판정 기준
    │  ├─ dto/                                  ✅ 확정본 (수정 금지)
@@ -235,7 +270,7 @@ Outdoor_Activity_Index/
    ├─ resources/
    │  ├─ api.properties.example                ✅ 키 자리만 비운 템플릿
    │  ├─ api.properties                        🔒 각자 PC에만 (커밋 금지)
-   │  └─ region_grid.csv                       ⬜ (C) 시도, 시군구, nx, ny
+   │  └─ station_grid.csv                      ⬜ (C) 시도, 측정소명, nx, ny
    └─ webapp/
       ├─ index.jsp                             ⬜ (D) /search 로 이동
       ├─ css/style.css                         ⬜ (D)
@@ -258,26 +293,29 @@ Outdoor_Activity_Index/
 |---|---|---|---|
 | **A** 공통 기반 + 통합 | | 레포 관리, API 요청 공용 도구, 설정 읽기, 오류 처리, 최종 결합 | `SearchController` `EncodingFilter` `OutdoorCardService` `ApiConfig` `HttpClientUtil` `ApiResponseValidator` `web.xml` |
 | **B** 날씨 (기상청) | | 발표 시간 계산, 실황 + 예보 조회, 코드 → 글자 변환 | `WeatherService` `BaseTimeCalculator` |
-| **C** 지역 + 미세먼지 | | 지역 표 CSV 작성, 지역 찾기, 시도별 미세먼지 → 구 매칭 / 평균 | `RegionService` `AirQualityService` `region_grid.csv` |
+| **C** 미세먼지 + 측정소 위치 | | 시도별 미세먼지 조회, 측정소 선택 / 평균, 측정소 위치 표 작성, 측정소명 → nx·ny | `AirQualityService` `RegionService` `station_grid.csv` |
 | **D** 판정 + 화면 | | 등급 계산, 야외활동 지수 판정, JSP 화면 4개 + CSS | `OutdoorIndexPolicy` `DustGradeCalculator` `*.jsp` `style.css` |
 
 ### 서로 주고받는 메서드 (이름 고정)
 ```java
-// C
-RegionDTO     RegionService.findRegion(String sido, String sigungu);   // 없으면 NoResultException
-AirQualityDTO AirQualityService.getAirQuality(RegionDTO region);
+// C — API ① 호출 → 측정소 목록 → 측정소 선택 → 위치 변환
+List<AirQualityDTO> AirQualityService.getStations(String sido);          // 시·도 안 측정소 전체 (0건이면 NoResultException)
+AirQualityDTO       AirQualityService.selectStation(List<AirQualityDTO> stations, String stationName);
+                                                                         // 일치 측정소, 없거나 미입력이면 시·도 평균(sidoAverage=true)
+RegionDTO           RegionService.findGrid(String sido, String stationName);
+                                                                         // API ①의 측정소명 → nx, ny (표에 없으면 시·도 대표 지점)
 
-// B
+// B — API ② 호출 (입력 nx, ny는 API ① 결과에서 나옴)
 WeatherDTO              WeatherService.getCurrentWeather(int nx, int ny);
-List<HourlyForecastDTO> WeatherService.getHourlyForecast(int nx, int ny); // 확장용
+List<HourlyForecastDTO> WeatherService.getHourlyForecast(int nx, int ny); // 확장용, 지금은 빈 리스트
 
 // D
 DustGrade          DustGradeCalculator.pm10Grade(Integer value);
 DustGrade          DustGradeCalculator.pm25Grade(Integer value);
-OutdoorIndexResult OutdoorIndexPolicy.judge(AirQualityDTO air, WeatherDTO weather); // 둘 다 null 가능
+OutdoorIndexResult OutdoorIndexPolicy.judge(AirQualityDTO air, WeatherDTO weather); // air나 weather가 null일 수 있음
 
-// A
-OutdoorCardDTO OutdoorCardService.getCard(String sido, String sigungu);
+// A — 위 순서대로 연결 (API ① → 측정소명 → nx, ny → API ② → 판정)
+OutdoorCardDTO OutdoorCardService.getCard(String sido, String stationName);
 ```
 
 ---
@@ -315,7 +353,7 @@ PM10과 PM2.5 중 **더 나쁜 등급**을 대표 등급으로 사용해요.
 | 상황 | 화면 | ErrorCode |
 |---|---|---|
 | 시·도를 선택하지 않음 | 검색 화면 + 안내 문구 | `EMPTY_INPUT` |
-| 지역 표에 없는 지역 | "검색 결과가 없습니다" | `REGION_NOT_FOUND` |
+| 시·도 목록에 없는 값, 측정소 0건 | "검색 결과가 없습니다" | `REGION_NOT_FOUND` |
 | 측정값이 `-` / 빈 값 | 해당 항목만 "정보 없음" | - |
 | 서비스키 오류 | 해당 영역에 오류 문구 | `API_KEY_ERROR` |
 | 하루 호출 한도 초과 | 해당 영역에 오류 문구 | `API_TRAFFIC_EXCEEDED` |
@@ -391,7 +429,7 @@ git push origin feature/weather
 **2단계 · 각자 개발**
 - [ ] A: `HttpClientUtil`, `ApiConfig`, `ApiResponseValidator`, `EncodingFilter`
 - [ ] B: `BaseTimeCalculator`, `WeatherService`
-- [ ] C: `region_grid.csv`, `RegionService`, `AirQualityService`
+- [ ] C: `AirQualityService`, `station_grid.csv`, `RegionService`
 - [ ] D: `DustGradeCalculator`, `OutdoorIndexPolicy`, JSP 화면 (가짜 데이터로)
 
 **3단계 · 통합 · 테스트**
@@ -405,7 +443,7 @@ git push origin feature/weather
 
 | 문서 | 내용 |
 |---|---|
-| [docs/TEAM_GUIDE.pdf](docs/TEAM_GUIDE.pdf) | 비전공자용 팀 가이드 (흐름, 역할, 약속, 용어) |
+| [docs/TEAM_GUIDE.pdf](docs/TEAM_GUIDE.pdf) | 팀 가이드 (흐름, 역할, 약속, 용어) |
 | [docs/PROMPT.md](docs/PROMPT.md) | AI 코드 생성용 전체 요구사항 |
 | [docs/DTO_CONTRACT.md](docs/DTO_CONTRACT.md) | DTO 확정본 설명, JSP 사용 예 |
 
