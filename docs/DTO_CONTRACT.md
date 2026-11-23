@@ -47,6 +47,17 @@ DustGrade          DustGradeCalculator.pm10Grade(Integer value);
 DustGrade          DustGradeCalculator.pm25Grade(Integer value);
 OutdoorIndexResult OutdoorIndexPolicy.judge(AirQualityDTO air, WeatherDTO weather); // air나 weather가 null일 수 있음
 
+// A — 공용 도구 (B·C가 호출)
+String ApiConfig.getServiceKey();          // API 인증키 (Decoding 키 원본)
+String ApiConfig.getAirKoreaEndpoint();    // 에어코리아 주소
+String ApiConfig.getKmaEndpoint();         // 기상청 주소
+String HttpClientUtil.get(String url);     // API 요청 → 응답 JSON 문자열
+void   ApiResponseValidator.validate(String resultCode, String resultMsg); // "00"이 아니면 예외
+
+// B — 발표 시각 (String[] { base_date, base_time })
+String[] BaseTimeCalculator.forUltraSrtNcst(LocalDateTime now);
+String[] BaseTimeCalculator.forUltraSrtFcst(LocalDateTime now);
+
 // A — 위 순서대로 연결 (API ① → 측정소명 → nx, ny → API ② → 판정)
 OutdoorCardDTO OutdoorCardService.getCard(String sido, String stationName);
 ```

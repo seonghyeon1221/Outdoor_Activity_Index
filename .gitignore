@@ -21,3 +21,6 @@ src/main/resources/api.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# 라이브러리 jar (각자 WEB-INF/lib/README.txt 보고 받기)
+src/main/webapp/WEB-INF/lib/*.jar

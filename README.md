@@ -216,23 +216,44 @@ cp src/main/resources/api.properties.example src/main/resources/api.properties
 2. `Window → Preferences → General → Workspace → Text file encoding` → **UTF-8**
 3. `Window → Preferences → Server → Runtime Environments` → **Apache Tomcat v11.0** 추가
 4. 프로젝트 우클릭 → `Properties → Project Facets` → Dynamic Web Module **6.1**, Java **17** 이상
-5. 위 jar 3개를 `WEB-INF/lib` 에 넣기
+5. 위 jar 3개를 `src/main/webapp/WEB-INF/lib` 에 넣기 (다운로드 주소는 같은 폴더의 `README.txt`)
+   - Maven을 쓰면 jar를 따로 받을 필요 없이 `pom.xml` 이 자동으로 받아 줘요.
 
 ### 5단계. 실행
 프로젝트 우클릭 → `Run As → Run on Server` → 브라우저에서
 ```
 http://localhost:8080/Outdoor_Activity_Index/search
+http://localhost:8080/Outdoor_Activity_Index/search?sido=서울&station=중구
 ```
+(주소 가운데 `Outdoor_Activity_Index` 는 이클립스 프로젝트 이름이에요. 다르면 그 이름으로 바꾸세요.)
+
+**Maven으로 실행할 때**
+```bash
+mvn package                      # target/outdoor-index.war 생성
+cp target/outdoor-index.war {톰캣11 폴더}/webapps/
+# http://localhost:8080/outdoor-index/search
+```
+
+### 자주 나는 오류
+| 증상 | 원인 · 해결 |
+|---|---|
+| 화면에 "서비스 키에 문제가 있어…" | `api.properties` 가 없거나 키가 틀림. 발급 직후라면 1~2시간 뒤 다시 |
+| `ClassNotFoundException: jakarta.servlet…` | Tomcat 10 미만 사용 중 → **Tomcat 11** 로 변경 |
+| JSP에서 `jakarta.tags.core` 를 못 찾음 | `WEB-INF/lib` 에 JSTL jar 2개가 없음 |
+| `NoClassDefFoundError: com/google/gson/Gson` | `WEB-INF/lib` 에 gson jar가 없음 |
+| 한글이 `???` 로 깨짐 | 이클립스 Text file encoding이 UTF-8이 아님 |
+| 날씨만 "현재 제공되는 데이터가 없습니다" | 기상청 발표 직후라 아직 자료가 없음 → 잠시 뒤 새로고침 |
 
 ---
 
 ## 📁 폴더 구조
 
-✅ = 레포에 올라와 있음 · ⬜ = 앞으로 만들 파일 · 괄호 = 담당자
+✅ = 구현 완료 · 📦 = 각자 준비 · 🔒 = 각자 PC에만 · 괄호 = 담당자
 
 ```
 Outdoor_Activity_Index/
 ├─ README.md                                   ✅
+├─ pom.xml                                     ✅ (선택) Maven 빌드용
 ├─ .gitignore                                  ✅
 ├─ docs/
 │  ├─ PROMPT.md                                ✅ AI 코드 생성용 요구사항 프롬프트
@@ -242,16 +263,16 @@ Outdoor_Activity_Index/
 └─ src/main/
    ├─ java/com/outdoorindex/
    │  ├─ controller/
-   │  │  └─ SearchController.java              ⬜ (A) 요청 받기 → 화면 전달
+   │  │  └─ SearchController.java              ✅ (A) 요청 받기 → 화면 전달
    │  ├─ filter/
-   │  │  └─ EncodingFilter.java                ⬜ (A) UTF-8 처리
+   │  │  └─ EncodingFilter.java                ✅ (A) UTF-8 처리
    │  ├─ service/
-   │  │  ├─ OutdoorCardService.java            ⬜ (A) 두 결과 합치기 + 부분 실패
-   │  │  ├─ WeatherService.java                ⬜ (B) 초단기실황 + 초단기예보
-   │  │  ├─ RegionService.java                 ⬜ (C) 측정소명 → nx, ny 변환
-   │  │  └─ AirQualityService.java             ⬜ (C) 시도별 미세먼지 → 측정소 선택
+   │  │  ├─ OutdoorCardService.java            ✅ (A) 두 결과 합치기 + 부분 실패
+   │  │  ├─ WeatherService.java                ✅ (B) 초단기실황 + 초단기예보
+   │  │  ├─ RegionService.java                 ✅ (C) 측정소명 → nx, ny 변환
+   │  │  └─ AirQualityService.java             ✅ (C) 시도별 미세먼지 → 측정소 선택
    │  ├─ policy/
-   │  │  └─ OutdoorIndexPolicy.java            ⬜ (D) 판정 기준
+   │  │  └─ OutdoorIndexPolicy.java            ✅ (D) 판정 기준
    │  ├─ dto/                                  ✅ 확정본 (수정 금지)
    │  │  ├─ RegionDTO · AirQualityDTO · WeatherDTO · HourlyForecastDTO
    │  │  ├─ OutdoorIndexResult · OutdoorCardDTO
@@ -262,27 +283,27 @@ Outdoor_Activity_Index/
    │  │  └─ OutdoorException · NoResultException · ApiResponseException
    │  │     ApiConnectionException · ApiParseException
    │  └─ util/
-   │     ├─ ApiConfig.java                     ⬜ (A) 설정 파일 읽기
-   │     ├─ HttpClientUtil.java                ⬜ (A) API 요청 공용 도구
-   │     ├─ ApiResponseValidator.java          ⬜ (A) resultCode 검사
-   │     ├─ BaseTimeCalculator.java            ⬜ (B) 발표 시간 계산
-   │     └─ DustGradeCalculator.java           ⬜ (D) 수치 → 등급
+   │     ├─ ApiConfig.java                     ✅ (A) 설정 파일 읽기
+   │     ├─ HttpClientUtil.java                ✅ (A) API 요청 공용 도구
+   │     ├─ ApiResponseValidator.java          ✅ (A) resultCode 검사
+   │     ├─ BaseTimeCalculator.java            ✅ (B) 발표 시간 계산
+   │     └─ DustGradeCalculator.java           ✅ (D) 수치 → 등급
    ├─ resources/
    │  ├─ api.properties.example                ✅ 키 자리만 비운 템플릿
    │  ├─ api.properties                        🔒 각자 PC에만 (커밋 금지)
-   │  └─ station_grid.csv                      ⬜ (C) 시도, 측정소명, nx, ny
+   │  └─ station_grid.csv                      ✅ (C) 시도, 측정소명, nx, ny
    └─ webapp/
-      ├─ index.jsp                             ⬜ (D) /search 로 이동
-      ├─ css/style.css                         ⬜ (D)
+      ├─ index.jsp                             ✅ (D) /search 로 이동
+      ├─ css/style.css                         ✅ (D)
       └─ WEB-INF/
-         ├─ web.xml                            ⬜ (A)
-         ├─ lib/                               ⬜ (A) jar 3개
+         ├─ web.xml                            ✅ (A)
+         ├─ lib/                               📦 (A) jar 3개 — 각자 넣기 (README.txt 참고)
          └─ views/
-            ├─ common/header.jsp · footer.jsp  ⬜ (D)
-            ├─ search.jsp                      ⬜ (D) 검색 화면
-            ├─ result.jsp                      ⬜ (D) 결과 카드
-            ├─ noResult.jsp                    ⬜ (D) 검색 결과 없음
-            └─ error.jsp                       ⬜ (D) 오류 안내
+            ├─ common/header.jsp · footer.jsp  ✅ (D)
+            ├─ search.jsp                      ✅ (D) 검색 화면
+            ├─ result.jsp                      ✅ (D) 결과 카드
+            ├─ noResult.jsp                    ✅ (D) 검색 결과 없음
+            └─ error.jsp                       ✅ (D) 오류 안내
 ```
 
 ---
@@ -313,6 +334,13 @@ List<HourlyForecastDTO> WeatherService.getHourlyForecast(int nx, int ny); // 확
 DustGrade          DustGradeCalculator.pm10Grade(Integer value);
 DustGrade          DustGradeCalculator.pm25Grade(Integer value);
 OutdoorIndexResult OutdoorIndexPolicy.judge(AirQualityDTO air, WeatherDTO weather); // air나 weather가 null일 수 있음
+
+// A — 공용 도구 (B·C가 호출)
+String ApiConfig.getServiceKey();          // API 인증키 (Decoding 키 원본)
+String ApiConfig.getAirKoreaEndpoint();    // 에어코리아 주소
+String ApiConfig.getKmaEndpoint();         // 기상청 주소
+String HttpClientUtil.get(String url);     // API 요청 → 응답 JSON 문자열 (연결 실패·타임아웃·XML 오류는 예외)
+void   ApiResponseValidator.validate(String resultCode, String resultMsg); // "00"이 아니면 예외
 
 // A — 위 순서대로 연결 (API ① → 측정소명 → nx, ny → API ② → 판정)
 OutdoorCardDTO OutdoorCardService.getCard(String sido, String stationName);
@@ -426,15 +454,18 @@ git push origin feature/weather
 - [ ] 팀원 전원 API 키 발급 + 브라우저 테스트 성공
 - [ ] 개발 환경 통일 (JDK 17+, Tomcat 11, UTF-8)
 
-**2단계 · 각자 개발**
-- [ ] A: `HttpClientUtil`, `ApiConfig`, `ApiResponseValidator`, `EncodingFilter`
-- [ ] B: `BaseTimeCalculator`, `WeatherService`
-- [ ] C: `AirQualityService`, `station_grid.csv`, `RegionService`
-- [ ] D: `DustGradeCalculator`, `OutdoorIndexPolicy`, JSP 화면 (가짜 데이터로)
+**2단계 · 개발**
+- [x] A: `HttpClientUtil`, `ApiConfig`, `ApiResponseValidator`, `EncodingFilter`
+- [x] B: `BaseTimeCalculator`, `WeatherService`
+- [x] C: `AirQualityService`, `station_grid.csv`(서울 25개 구 + 시·도 대표), `RegionService`
+- [x] D: `DustGradeCalculator`, `OutdoorIndexPolicy`, JSP 화면 4개 + CSS
+- [x] A: `OutdoorCardService`, `SearchController`, `web.xml`, `pom.xml`
 
-**3단계 · 통합 · 테스트**
-- [ ] A: `OutdoorCardService`, `SearchController`, `web.xml`
-- [ ] 정상 검색 / 빈 검색어 / 없는 지역 / 잘못된 키 / 미세먼지만 실패 / 날씨만 실패
+**3단계 · 검증 · 마무리**
+- [x] 로직 검증 (가짜 API 서버로 47개 항목 통과: 정상 / 시·도 평균 / 부분 매칭 / 키 오류(XML·401) / 트래픽 초과 / 깨진 JSON / 측정소 0건 / NO_DATA 재시도 / 타임아웃 / 하늘상태만 실패 / 빈 입력)
+- [ ] 실제 키로 Tomcat 11에서 실행 확인
+- [ ] `station_grid.csv` nx·ny 값을 기상청 격자 엑셀과 대조 + 다른 시·도 측정소 추가 (C)
+- [ ] 정상 검색 / 빈 검색어 / 없는 지역 / 잘못된 키 / 미세먼지만 실패 / 날씨만 실패 화면 확인
 - [ ] 시연 시나리오 준비
 
 ---
