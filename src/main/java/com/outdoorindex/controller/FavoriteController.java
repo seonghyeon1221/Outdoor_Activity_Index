@@ -23,6 +23,8 @@ import java.io.IOException;
 @WebServlet("/favorites")
 public class FavoriteController extends HttpServlet {
 
+    private static final long serialVersionUID = 1L;
+
     private final FavoriteDAO favoriteDAO = new FavoriteDAO();
     private final SearchHistoryDAO historyDAO = new SearchHistoryDAO();
 

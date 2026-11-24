@@ -8,6 +8,8 @@ import com.outdoorindex.enums.ErrorCode;
  * - 받는 곳: SearchController (A) → noResult.jsp
  */
 public class NoResultException extends OutdoorException {
+
+    private static final long serialVersionUID = 1L;
     public NoResultException(String detail) {
         super(ErrorCode.REGION_NOT_FOUND, detail, null);
     }

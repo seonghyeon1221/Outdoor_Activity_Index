@@ -28,6 +28,8 @@ import java.util.logging.Logger;
 @WebServlet("/compare")
 public class CompareController extends HttpServlet {
 
+    private static final long serialVersionUID = 1L;
+
     private static final Logger LOG = Logger.getLogger(CompareController.class.getName());
     /** 한 번에 비교할 수 있는 최대 지역 수 */
     public static final int MAX_ITEMS = 3;

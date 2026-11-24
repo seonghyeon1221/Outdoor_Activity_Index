@@ -7,6 +7,8 @@ import com.outdoorindex.enums.ErrorCode;
  * - 던지는 곳: HttpClientUtil (A), 각 Service의 Gson 변환 부분 (B, C)
  */
 public class ApiParseException extends OutdoorException {
+
+    private static final long serialVersionUID = 1L;
     public ApiParseException(String detail, Throwable cause) {
         super(ErrorCode.API_PARSE_ERROR, detail, cause);
     }

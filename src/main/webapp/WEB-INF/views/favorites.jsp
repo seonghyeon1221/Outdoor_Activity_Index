@@ -37,8 +37,9 @@
                 <p class="error-message"><c:out value="${dbError}"/></p>
             </c:if>
             <p>
-                MySQL이 켜져 있는지, <code>.env</code>의 OUTDOOR_DB_URL · OUTDOOR_DB_USER ·
-                OUTDOOR_DB_PASSWORD가 맞는지 확인해 주세요.
+                MySQL이 켜져 있는지, 설정 파일의 DB 주소 · 사용자 · 비밀번호가 맞는지 확인해 주세요.
+                (<code>.env</code> · <code>outdoor-index.properties</code>: OUTDOOR_DB_URL / OUTDOOR_DB_USER / OUTDOOR_DB_PASSWORD,
+                이클립스 <code>api.properties</code>: db.url / db.user / db.password)
                 검색과 비교는 DB 없이도 쓸 수 있어요.
             </p>
             <form method="post" action="${ctx}/favorites">

@@ -9,6 +9,8 @@ import com.outdoorindex.enums.ErrorCode;
  */
 public class OutdoorException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     private final ErrorCode errorCode;
 
     /** 오류 코드만으로 생성 (메시지는 ErrorCode의 안내 문구 사용) */

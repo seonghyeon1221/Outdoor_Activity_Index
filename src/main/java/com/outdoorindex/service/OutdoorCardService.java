@@ -30,17 +30,16 @@ public class OutdoorCardService {
 
     private final AirQualityService airQualityService;
     private final RegionService regionService;
-    private final WeatherService weatherService;
+    // WeatherService 는 static 메서드만 있어서 객체를 들고 있지 않음 (팀원 B 코드)
 
     public OutdoorCardService() {
-        this(new AirQualityService(), new RegionService(), new WeatherService());
+        this(new AirQualityService(), new RegionService());
     }
 
     /** 테스트 등에서 서비스를 바꿔 끼울 수 있도록 하는 생성자 */
-    public OutdoorCardService(AirQualityService air, RegionService region, WeatherService weather) {
+    public OutdoorCardService(AirQualityService air, RegionService region) {
         this.airQualityService = air;
         this.regionService = region;
-        this.weatherService = weather;
     }
 
     /**
@@ -96,7 +95,7 @@ public class OutdoorCardService {
 
         // ② 기상청: 같은 위치의 날씨
         try {
-            WeatherDTO weather = weatherService.getCurrentWeather(region.getNx(), region.getNy());
+            WeatherDTO weather = WeatherService.getCurrentWeather(region.getNx(), region.getNy());
             card.setWeather(weather);
         } catch (OutdoorException e) {
             LOG.warning("날씨 조회 실패: " + e.getMessage());
@@ -114,7 +113,7 @@ public class OutdoorCardService {
         // 시간대별 추이 (실패해도 카드의 나머지는 그대로)
         if (includeHourly) {
             try {
-                List<HourlyForecastDTO> hourly = weatherService.getHourlyForecast(region.getNx(), region.getNy());
+                List<HourlyForecastDTO> hourly = WeatherService.getHourlyForecast(region.getNx(), region.getNy());
                 for (HourlyForecastDTO h : hourly) {
                     OutdoorIndexResult r = OutdoorIndexPolicy.judge(airForJudge, toWeather(h));
                     if (r != null) h.setLevel(r.getLevel());

@@ -29,6 +29,8 @@ import java.util.logging.Logger;
 @WebServlet("/search")
 public class SearchController extends HttpServlet {
 
+    private static final long serialVersionUID = 1L;
+
     private static final Logger LOG = Logger.getLogger(SearchController.class.getName());
     private static final String VIEW = "/WEB-INF/views/";
 

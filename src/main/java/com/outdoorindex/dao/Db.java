@@ -131,7 +131,7 @@ public final class Db {
         }
         String m = all.toString();
         if (m.contains("Access denied")) {
-            return "MySQL 아이디 또는 비밀번호가 틀렸어요. (설정 파일 .env 또는 outdoor-index.properties 의 OUTDOOR_DB_USER / OUTDOOR_DB_PASSWORD 확인)";
+            return "MySQL 아이디 또는 비밀번호가 틀렸어요. (설정 파일의 DB 사용자 · 비밀번호 확인: .env / outdoor-index.properties 는 OUTDOOR_DB_PASSWORD, 이클립스 api.properties 는 db.password)";
         }
         if (m.contains("Communications link failure") || m.contains("Connection refused")) {
             return "MySQL 서버에 연결할 수 없어요. MySQL이 켜져 있는지 확인하세요. (Windows: 서비스 앱에서 MySQL80 시작 / Mac: brew services start mysql)";

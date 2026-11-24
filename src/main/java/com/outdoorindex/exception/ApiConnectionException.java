@@ -8,6 +8,8 @@ import com.outdoorindex.enums.ErrorCode;
  * - ErrorCode는 API_TIMEOUT 또는 API_CONNECTION_FAILED
  */
 public class ApiConnectionException extends OutdoorException {
+
+    private static final long serialVersionUID = 1L;
     public ApiConnectionException(ErrorCode errorCode, String detail, Throwable cause) {
         super(errorCode, detail, cause);
     }

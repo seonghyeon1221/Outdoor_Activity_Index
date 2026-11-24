@@ -9,6 +9,8 @@ import com.outdoorindex.enums.ErrorCode;
  */
 public class ApiResponseException extends OutdoorException {
 
+    private static final long serialVersionUID = 1L;
+
     private final String resultCode;
 
     public ApiResponseException(ErrorCode errorCode, String resultCode, String resultMsg) {
