@@ -21,7 +21,9 @@ public class OutdoorCardDTO {
     private ErrorCode airError;                                       // 미세먼지 오류 (정상이면 null)
     private ErrorCode weatherError;                                   // 날씨 오류 (정상이면 null)
     private List<String> stationNames = new ArrayList<>();            // API ①이 돌려준 같은 시·도 측정소 목록 ("다른 측정소 보기" 링크용)
-    private List<HourlyForecastDTO> hourlyForecasts = new ArrayList<>(); // 시간별 예보 (확장용, 지금은 빈 리스트)
+    private List<HourlyForecastDTO> hourlyForecasts = new ArrayList<>(); // 시간별 예보 (앞으로 12시간)
+    private String hourlySummary;                                     // 예: "야외활동 좋음: 21시~23시"
+    private boolean savedDataUsed;                                    // 인터넷 문제로 저장된 응답을 썼으면 true
 
     public OutdoorCardDTO() {}
 
@@ -43,6 +45,14 @@ public class OutdoorCardDTO {
     public void setAirError(ErrorCode airError) { this.airError = airError; }
     public ErrorCode getWeatherError() { return weatherError; }
     public void setWeatherError(ErrorCode weatherError) { this.weatherError = weatherError; }
+    public String getHourlySummary() { return hourlySummary; }
+    public void setHourlySummary(String hourlySummary) { this.hourlySummary = hourlySummary; }
+    public boolean isSavedDataUsed() { return savedDataUsed; }
+    public void setSavedDataUsed(boolean savedDataUsed) { this.savedDataUsed = savedDataUsed; }
+
+    /** 시간별 예보가 있는지 */
+    public boolean isHasHourly() { return hourlyForecasts != null && !hourlyForecasts.isEmpty(); }
+
     public List<String> getStationNames() { return stationNames; }
     public void setStationNames(List<String> stationNames) { this.stationNames = stationNames == null ? new ArrayList<>() : stationNames; }
     public List<HourlyForecastDTO> getHourlyForecasts() { return hourlyForecasts; }

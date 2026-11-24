@@ -32,6 +32,8 @@ public final class HttpClientUtil {
     private static final Pattern XML_RESULT_CODE = Pattern.compile("<resultCode>\\s*(\\d+)\\s*</resultCode>");
     private static final Pattern XML_RESULT_MSG = Pattern.compile("<resultMsg>\\s*([^<]+?)\\s*</resultMsg>");
 
+    private static final Pattern RESULT_OK = Pattern.compile("\"resultCode\"\\s*:\\s*\"00\"");
+
     private static volatile HttpClient client;
 
     private HttpClientUtil() {}
@@ -42,6 +44,55 @@ public final class HttpClientUtil {
      * @return 응답 본문 (앞뒤 공백 제거)
      */
     public static String get(String url) {
+        String cacheKey = cacheKey(url);
+        String demoKey = demoKey(url);
+        String mode = ApiConfig.getDemoMode();
+
+        // 1) 시연 재생 모드: 인터넷 없이 저장본만 사용
+        if ("replay".equals(mode)) {
+            String saved = DemoStore.load(demoKey);
+            if (saved == null) {
+                throw new ApiConnectionException(ErrorCode.API_CONNECTION_FAILED,
+                        "시연 재생 모드인데 저장된 응답이 없음: " + mask(url), null);
+            }
+            DemoStore.markUsed();
+            return saved;
+        }
+
+        // 2) 메모리 캐시
+        String cached = ApiCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        // 3) 실제 요청 (연결 실패·타임아웃이면 저장본으로 대체)
+        String body;
+        try {
+            body = request(url);
+        } catch (ApiConnectionException e) {
+            if ("auto".equals(mode)) {
+                String saved = DemoStore.load(demoKey);
+                if (saved != null) {
+                    LOG.warning("연결 실패 → 저장된 응답 사용: " + mask(url));
+                    DemoStore.markUsed();
+                    return saved;
+                }
+            }
+            throw e;
+        }
+
+        // 4) 정상 응답("00")만 캐시·저장
+        if (RESULT_OK.matcher(body).find()) {
+            ApiCache.put(cacheKey, body);
+            if ("auto".equals(mode)) {
+                DemoStore.save(demoKey, body);
+            }
+        }
+        return body;
+    }
+
+    /** 실제 HTTP GET 요청 */
+    private static String request(String url) {
         HttpRequest request;
         try {
             request = HttpRequest.newBuilder(URI.create(url))
@@ -130,6 +181,31 @@ public final class HttpClientUtil {
     private static String find(Pattern p, String text) {
         Matcher m = p.matcher(text);
         return m.find() ? m.group(1).trim() : null;
+    }
+
+    /** 캐시 키: 서비스키를 뺀 주소 */
+    static String cacheKey(String url) {
+        return stripParams(url, java.util.Set.of("servicekey"));
+    }
+
+    /** 시연 저장 키: 서비스키·발표 날짜·발표 시각을 뺀 주소 */
+    static String demoKey(String url) {
+        return stripParams(url, java.util.Set.of("servicekey", "base_date", "base_time"));
+    }
+
+    /** 주소에서 지정한 파라미터(대소문자 무시)를 뺀다 */
+    private static String stripParams(String url, java.util.Set<String> lowerNames) {
+        int q = url.indexOf('?');
+        if (q < 0) return url;
+        java.util.StringJoiner kept = new java.util.StringJoiner("&");
+        for (String part : url.substring(q + 1).split("&")) {
+            if (part.isEmpty()) continue;
+            int eq = part.indexOf('=');
+            String name = (eq < 0 ? part : part.substring(0, eq)).toLowerCase();
+            if (!lowerNames.contains(name)) kept.add(part);
+        }
+        String rest = kept.toString();
+        return rest.isEmpty() ? url.substring(0, q) : url.substring(0, q + 1) + rest;
     }
 
     /** 로그에 서비스키가 찍히지 않도록 가림 */

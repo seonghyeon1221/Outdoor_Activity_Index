@@ -1,7 +1,7 @@
 package com.outdoorindex.enums;
 
 /**
- * 기상청 강수형태(PTY) 코드 (초단기실황/초단기예보 기준).
+ * 기상청 강수형태(PTY) 코드 (초단기실황·초단기예보·단기예보).
  * - 담당: B
  * - 판정(D)에서는 isPrecipitating()만 사용
  */
@@ -10,6 +10,7 @@ public enum PrecipitationType {
     RAIN("1", "비"),
     RAIN_SNOW("2", "비/눈"),
     SNOW("3", "눈"),
+    SHOWER("4", "소나기"),                // 단기예보에만 있음
     DRIZZLE("5", "빗방울"),
     DRIZZLE_SNOW("6", "빗방울눈날림"),
     SNOW_FLURRY("7", "눈날림"),

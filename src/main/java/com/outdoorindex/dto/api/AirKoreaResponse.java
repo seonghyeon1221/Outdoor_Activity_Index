@@ -41,5 +41,7 @@ public class AirKoreaResponse {
         public String pm25Value;    // PM2.5 농도 ("-" 가능)
         public String pm10Grade;    // 에어코리아 자체 등급 (참고용, 판정에는 사용 안 함)
         public String pm25Grade;
+        public String pm10Flag;     // 측정값이 없을 때 이유 (예: "통신장애", "장비점검")
+        public String pm25Flag;
     }
 }

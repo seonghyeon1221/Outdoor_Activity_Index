@@ -1,198 +1,304 @@
+
 package com.outdoorindex.service;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.logging.Logger;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
-import com.outdoorindex.dto.HourlyForecastDTO;
 import com.outdoorindex.dto.WeatherDTO;
+import com.outdoorindex.dto.HourlyForecastDTO;
 import com.outdoorindex.dto.api.KmaResponse;
 import com.outdoorindex.enums.ErrorCode;
 import com.outdoorindex.enums.PrecipitationType;
 import com.outdoorindex.enums.SkyCode;
 import com.outdoorindex.exception.ApiParseException;
-import com.outdoorindex.exception.ApiResponseException;
 import com.outdoorindex.exception.OutdoorException;
 import com.outdoorindex.util.ApiConfig;
+import com.outdoorindex.util.HttpClientUtil;
 import com.outdoorindex.util.ApiResponseValidator;
 import com.outdoorindex.util.BaseTimeCalculator;
-import com.outdoorindex.util.HttpClientUtil;
-
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.StringJoiner;
-import java.util.logging.Logger;
+import com.outdoorindex.util.BaseTimeCalculator.BaseTime;
 
 /**
- * 기상청 단기예보 조회서비스(API ②) 조회 서비스.
- * - 담당: B
- * - 입력 nx, ny는 에어코리아(API ①)가 돌려준 측정소의 위치 (RegionService가 변환)
- * - 초단기실황(getUltraSrtNcst): 기온 T1H, 습도 REH, 강수형태 PTY, 풍속 WSD
- * - 초단기예보(getUltraSrtFcst): 하늘상태 SKY (실황에는 SKY가 없음)
- * - 사용하는 공용 도구: ApiConfig.getServiceKey(), ApiConfig.getKmaEndpoint(),
- *   HttpClientUtil.get(url), ApiResponseValidator.validate(resultCode, resultMsg)
+ * 기상청에서 현재 날씨를 받아 WeatherDTO에 담는 서비스이다. (담당: B)
+ * - 현재 날씨: 초단기실황(기온·습도·강수형태·풍속) + 초단기예보(하늘 상태)
+ * - 시간대별 추이: 단기예보(getVilageFcst) 12시간
  */
 public class WeatherService {
 
+    private static final Gson GSON = new Gson();
     private static final Logger LOG = Logger.getLogger(WeatherService.class.getName());
-    private static final String PATH_NCST = "/getUltraSrtNcst";
-    private static final String PATH_FCST = "/getUltraSrtFcst";
-    private static final DateTimeFormatter FCST_DATETIME = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
 
-    private final Gson gson = new Gson();
+    /** 위치 번호(nx, ny)를 받아 현재 날씨를 조회한다. */
+    public static WeatherDTO getCurrentWeather(int nx, int ny) {
+        if (nx <= 0 || ny <= 0)
+            throw new OutdoorException(ErrorCode.REGION_NOT_FOUND);
 
-    /**
-     * 현재 날씨를 조회한다. (초단기실황 + 초단기예보의 하늘상태)
-     * - 실황 조회가 실패하면 예외 → 화면에 날씨 오류 표시
-     * - 하늘상태(예보)만 실패하면 sky = UNKNOWN 으로 두고 나머지는 정상 표시
-     */
-    public WeatherDTO getCurrentWeather(int nx, int ny) {
-        LocalDateTime now = BaseTimeCalculator.now();
-        WeatherDTO dto = new WeatherDTO();
+        BaseTime observationTime = BaseTimeCalculator.forObservation();
+        BaseTime forecastTime = BaseTimeCalculator.forForecast();
 
-        // 1) 초단기실황 — 데이터가 아직 없으면 한 단계 이전 발표 시각으로 1회 재시도
-        String[] base = BaseTimeCalculator.forUltraSrtNcst(now);
-        List<KmaResponse.Item> ncst = fetchOrEmpty(PATH_NCST, base, nx, ny, 10);
-        if (ncst.isEmpty()) {
-            base = BaseTimeCalculator.forUltraSrtNcst(now.minusHours(1));
-            ncst = fetchOrEmpty(PATH_NCST, base, nx, ny, 10);
-        }
-        if (ncst.isEmpty()) {
-            throw new OutdoorException(ErrorCode.NO_DATA, "초단기실황 데이터 없음 nx=" + nx + ", ny=" + ny, null);
-        }
-        dto.setBaseDate(base[0]);
-        dto.setBaseTime(base[1]);
-        for (KmaResponse.Item item : ncst) {
-            if (item == null || item.category == null) continue;
-            switch (item.category) {
-                case "T1H": dto.setTemperature(toDouble(item.obsrValue)); break;
-                case "REH": dto.setHumidity(toInteger(item.obsrValue)); break;
-                case "PTY": dto.setPrecipitation(PrecipitationType.fromCode(item.obsrValue)); break;
-                case "WSD": dto.setWindSpeed(toDouble(item.obsrValue)); break;
-                default: break;
-            }
+        KmaResponse observation = fetch("getUltraSrtNcst", observationTime, nx, ny);
+
+        if (items(observation).isEmpty()) {
+            observationTime = BaseTimeCalculator.previous(observationTime);
+            observation = fetch("getUltraSrtNcst", observationTime, nx, ny);
         }
 
-        // 2) 초단기예보에서 하늘상태(SKY)만 가져오기
+        if (items(observation).isEmpty())
+            throw new OutdoorException(ErrorCode.NO_DATA);
+
+        // 하늘 상태(초단기예보)만 실패하면 sky는 "정보 없음"으로 두고 나머지 날씨는 그대로 보여준다.
+        KmaResponse forecast = null;
         try {
-            dto.setSky(getSky(nx, ny, now));
+            forecast = fetch("getUltraSrtFcst", forecastTime, nx, ny);
+
+            if (items(forecast).isEmpty() || !hasSky(forecast)) {
+                forecastTime = BaseTimeCalculator.previous(forecastTime);
+                forecast = fetch("getUltraSrtFcst", forecastTime, nx, ny);
+            }
         } catch (OutdoorException e) {
-            LOG.warning("하늘상태 조회 실패 (나머지 날씨는 표시): " + e.getMessage());
-            dto.setSky(SkyCode.UNKNOWN);
-        }
-        return dto;
-    }
-
-    /**
-     * 시간별 예보 (확장용 — 이번에는 구조만 준비, 빈 리스트 반환).
-     * 확장 시 BaseTimeCalculator.forVilageFcst()로 발표 시각을 구하고
-     * /getVilageFcst 의 TMP, POP, PTY, SKY를 fcstDate+fcstTime별로 묶어 HourlyForecastDTO로 만든다.
-     */
-    public List<HourlyForecastDTO> getHourlyForecast(int nx, int ny) {
-        return new ArrayList<>();
-    }
-
-    /** 초단기예보에서 지금과 가장 가까운 시각의 SKY 값 */
-    private SkyCode getSky(int nx, int ny, LocalDateTime now) {
-        String[] base = BaseTimeCalculator.forUltraSrtFcst(now);
-        List<KmaResponse.Item> fcst = fetchOrEmpty(PATH_FCST, base, nx, ny, 60);
-        if (fcst.isEmpty()) {
-            base = BaseTimeCalculator.forUltraSrtFcst(now.minusHours(1));
-            fcst = fetchOrEmpty(PATH_FCST, base, nx, ny, 60);
+            LOG.warning("하늘 상태 조회 실패 (나머지 날씨는 표시): " + e.getMessage());
         }
 
-        KmaResponse.Item best = null;
-        long bestDiff = Long.MAX_VALUE;
-        for (KmaResponse.Item item : fcst) {
-            if (item == null || !"SKY".equals(item.category)) continue;
-            LocalDateTime t = parseFcstTime(item.fcstDate, item.fcstTime);
-            if (t == null) continue;
-            long diff = Math.abs(java.time.Duration.between(now, t).toMinutes());
-            if (diff < bestDiff) {
-                bestDiff = diff;
-                best = item;
+        WeatherDTO weather = new WeatherDTO();
+        weather.setBaseDate(observationTime.getBaseDate());
+        weather.setBaseTime(observationTime.getBaseTime());
+
+        for (KmaResponse.Item item : items(observation)) {
+            if (item == null || item.category == null)
+                continue;
+
+            String value = item.obsrValue;
+
+            switch (item.category) {
+                case "T1H":
+                    weather.setTemperature(toDouble(value));
+                    break;
+                case "REH":
+                    weather.setHumidity(toInteger(value));
+                    break;
+                case "WSD":
+                    weather.setWindSpeed(toDouble(value));
+                    break;
+                case "PTY":
+                    weather.setPrecipitation(PrecipitationType.fromCode(value));
+                    break;
             }
         }
-        return best == null ? SkyCode.UNKNOWN : SkyCode.fromCode(best.fcstValue);
+
+        weather.setSky(findSky(forecast));
+        return weather;
     }
 
+    /** 시간대별 추이에 보여줄 시간 수 */
+    public static final int HOURLY_COUNT = 12;
+
     /**
-     * 기상청 API를 호출해 item 목록을 돌려준다.
-     * resultCode "03"(데이터 없음)이면 빈 리스트 → 호출한 쪽에서 이전 발표 시각으로 재시도
+     * 앞으로 HOURLY_COUNT시간의 시간별 예보를 조회한다. (단기예보 getVilageFcst)
+     * TMP(기온), POP(강수확률), PTY(강수형태), SKY(하늘), WSD(풍속)를 예보 시각별로 묶는다.
+     * 시간별 야외활동 지수(level)는 OutdoorCardService가 채운다.
      */
-    private List<KmaResponse.Item> fetchOrEmpty(String path, String[] base, int nx, int ny, int rows) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("serviceKey", ApiConfig.getServiceKey());
-        params.put("pageNo", "1");
-        params.put("numOfRows", String.valueOf(rows));
-        params.put("dataType", "JSON");
-        params.put("base_date", base[0]);
-        params.put("base_time", base[1]);
-        params.put("nx", String.valueOf(nx));
-        params.put("ny", String.valueOf(ny));
-
-        String json = HttpClientUtil.get(buildUrl(ApiConfig.getKmaEndpoint() + path, params));
-
-        KmaResponse res;
-        try {
-            res = gson.fromJson(json, KmaResponse.class);
-        } catch (JsonParseException e) {
-            throw new ApiParseException("기상청 JSON 파싱 실패", e);
-        }
-        if (res == null || res.response == null || res.response.header == null) {
-            throw new ApiParseException("기상청 응답 구조가 올바르지 않음", null);
-        }
-        try {
-            ApiResponseValidator.validate(res.response.header.resultCode, res.response.header.resultMsg);
-        } catch (ApiResponseException e) {
-            if (e.getErrorCode() == ErrorCode.NO_DATA) {
-                return Collections.emptyList();
-            }
-            throw e;
-        }
-        if (res.response.body == null || res.response.body.items == null
-                || res.response.body.items.item == null) {
+    public static List<HourlyForecastDTO> getHourlyForecast(int nx, int ny) {
+        if (nx <= 0 || ny <= 0)
             return Collections.emptyList();
+
+        BaseTime villageTime = BaseTimeCalculator.forVillage();
+        KmaResponse village = fetch("getVilageFcst", villageTime, nx, ny);
+
+        if (items(village).isEmpty()) {
+            villageTime = BaseTimeCalculator.previousVillage(villageTime);
+            village = fetch("getVilageFcst", villageTime, nx, ny);
         }
-        return res.response.body.items.item;
+
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
+        Map<String, HourlyForecastDTO> byTime = new TreeMap<>();
+
+        for (KmaResponse.Item item : items(village)) {
+            if (item == null || item.category == null || item.fcstDate == null || item.fcstTime == null)
+                continue;
+
+            HourlyForecastDTO hour = byTime.computeIfAbsent(item.fcstDate + item.fcstTime, k -> {
+                HourlyForecastDTO h = new HourlyForecastDTO();
+                h.setFcstDate(item.fcstDate);
+                h.setFcstTime(item.fcstTime);
+                return h;
+            });
+
+            switch (item.category) {
+                case "TMP":
+                    hour.setTemperature(toDouble(item.fcstValue));
+                    break;
+                case "POP":
+                    hour.setRainProbability(toInteger(item.fcstValue));
+                    break;
+                case "PTY":
+                    hour.setPrecipitation(PrecipitationType.fromCode(item.fcstValue));
+                    break;
+                case "SKY":
+                    hour.setSky(SkyCode.fromCode(item.fcstValue));
+                    break;
+                case "WSD":
+                    hour.setWindSpeed(toDouble(item.fcstValue));
+                    break;
+            }
+        }
+
+        LocalDateTime now = BaseTimeCalculator.now();
+        LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
+        List<HourlyForecastDTO> result = new ArrayList<>();
+
+        for (HourlyForecastDTO hour : byTime.values()) {
+            LocalDateTime when;
+            try {
+                when = LocalDateTime.parse(hour.getFcstDate() + hour.getFcstTime(), format);
+            } catch (RuntimeException e) {
+                continue;
+            }
+            // 지난 시각이나 기온이 없는 칸은 건너뛴다.
+            if (!when.isAfter(currentHour) || hour.getTemperature() == null)
+                continue;
+
+            long days = ChronoUnit.DAYS.between(now.toLocalDate(), when.toLocalDate());
+            hour.setDayLabel(days == 0 ? "오늘" : days == 1 ? "내일" : "모레");
+            result.add(hour);
+
+            if (result.size() >= HOURLY_COUNT)
+                break;
+        }
+        return result;
     }
 
-    /** 숫자 변환. 기상청 결측값(±900 이상)이나 잘못된 값은 null */
-    static Double toDouble(String raw) {
-        if (raw == null || raw.isBlank()) return null;
+    // 공통 유틸리티를 사용하여 기상청 API에 날씨 정보를 요청한다.
+    private static KmaResponse fetch(String apiName, BaseTime time, int nx, int ny) {
+        String key = ApiConfig.getServiceKey();
+        String endpoint = ApiConfig.getKmaEndpoint();
+
+        if (key == null || key.isBlank() || endpoint == null || endpoint.isBlank())
+            throw new OutdoorException(ErrorCode.API_KEY_ERROR);
+
+        String url = endpoint.replaceAll("/+$", "") + "/" + apiName
+                + "?serviceKey=" + encode(key)
+                + "&dataType=JSON&numOfRows=1000&pageNo=1"
+                + "&base_date=" + time.getBaseDate()
+                + "&base_time=" + time.getBaseTime()
+                + "&nx=" + nx
+                + "&ny=" + ny;
+
+        String json = HttpClientUtil.get(url);
+
+        if (json == null || !json.stripLeading().startsWith("{"))
+            throw new ApiParseException("기상청 응답이 JSON 형식이 아닙니다.", null);
+
+        KmaResponse response;
+
         try {
-            double v = Double.parseDouble(raw.trim());
+            response = GSON.fromJson(json, KmaResponse.class);
+        } catch (JsonParseException e) {
+            throw new ApiParseException("날씨 데이터 해석에 실패했습니다.", e);
+        }
+
+        if (response == null || response.response == null || response.response.header == null)
+            throw new ApiParseException("날씨 데이터 구조가 올바르지 않습니다.", null);
+
+        // API 응답 코드를 확인하고 데이터가 없는 경우 재조회할 수 있도록 처리한다.
+        String code = response.response.header.resultCode;
+
+        if ("03".equals(code))
+            return null;
+
+        ApiResponseValidator.validate(code, response.response.header.resultMsg);
+
+        return response;
+    }
+
+    // API 응답에서 날씨 데이터 목록을 추출한다.
+    private static List<KmaResponse.Item> items(KmaResponse data) {
+        if (data == null || data.response == null || data.response.body == null
+                || data.response.body.items == null || data.response.body.items.item == null)
+            return Collections.emptyList();
+
+        return data.response.body.items.item;
+    }
+
+    // 초단기예보에 하늘 상태(SKY) 데이터가 존재하는지 확인한다.
+    private static boolean hasSky(KmaResponse data) {
+        for (KmaResponse.Item item : items(data)) {
+            if (item != null && "SKY".equals(item.category)
+                    && hasValue(item.fcstValue))
+                return true;
+        }
+
+        return false;
+    }
+
+    // 현재 시각과 가장 가까운 하늘 상태를 찾아 반환한다.
+    private static SkyCode findSky(KmaResponse data) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
+
+        long shortest = Long.MAX_VALUE;
+        String sky = null;
+
+        for (KmaResponse.Item item : items(data)) {
+            if (item == null || !"SKY".equals(item.category)
+                    || !hasValue(item.fcstValue))
+                continue;
+
+            try {
+                LocalDateTime when = LocalDateTime.parse(
+                        item.fcstDate + item.fcstTime, format);
+
+                long minutes = Math.abs(Duration.between(now, when).toMinutes());
+
+                if (minutes < shortest) {
+                    shortest = minutes;
+                    sky = item.fcstValue;
+                }
+            } catch (RuntimeException ignored) {
+                // 날짜 형식이 올바르지 않은 예보 항목은 제외한다.
+            }
+        }
+
+        return SkyCode.fromCode(sky);
+    }
+
+    // 값이 비어 있거나 "-"이면 유효하지 않은 데이터로 처리한다.
+    private static boolean hasValue(String value) {
+        return value != null && !value.isBlank()
+                && !"-".equals(value.trim());
+    }
+
+    // 문자열로 전달된 기온과 풍속을 실수형으로 변환한다. 기상청 결측값(±900 이상)은 값 없음으로 처리한다.
+    private static Double toDouble(String value) {
+        try {
+            if (!hasValue(value)) return null;
+            double v = Double.parseDouble(value.trim());
             return Math.abs(v) >= 900 ? null : v;
         } catch (NumberFormatException e) {
             return null;
         }
     }
 
-    static Integer toInteger(String raw) {
-        Double v = toDouble(raw);
+    // 문자열로 전달된 습도·강수확률을 정수형으로 변환한다.
+    private static Integer toInteger(String value) {
+        Double v = toDouble(value);
         return v == null ? null : (int) Math.round(v);
     }
 
-    private static LocalDateTime parseFcstTime(String date, String time) {
-        if (date == null || time == null) return null;
-        try {
-            return LocalDateTime.parse(date.trim() + time.trim(), FCST_DATETIME);
-        } catch (RuntimeException e) {
-            return null;
-        }
-    }
-
-    /** 파라미터를 UTF-8로 1번만 인코딩해서 URL을 만든다 */
-    private static String buildUrl(String base, Map<String, String> params) {
-        StringJoiner q = new StringJoiner("&");
-        for (Map.Entry<String, String> e : params.entrySet()) {
-            q.add(e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8));
-        }
-        return base + "?" + q;
+    // API 인증키를 UTF-8 방식으로 URL 인코딩한다.
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }

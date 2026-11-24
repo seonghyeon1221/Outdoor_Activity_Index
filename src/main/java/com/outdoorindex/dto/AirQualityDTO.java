@@ -44,4 +44,13 @@ public class AirQualityDTO {
     public void setDataTime(String dataTime) { this.dataTime = dataTime; }
     public boolean isSidoAverage() { return sidoAverage; }
     public void setSidoAverage(boolean sidoAverage) { this.sidoAverage = sidoAverage; }
+
+    // ───── 측정소에 값이 없을 때 (예: 통신장애) ─────
+    private String statusNote;                          // 에어코리아가 알려준 이유 ("통신장애" 등), 없으면 null
+    private boolean filledFromAverage;                  // 빈 값을 시·도 평균으로 채웠으면 true
+
+    public String getStatusNote() { return statusNote; }
+    public void setStatusNote(String statusNote) { this.statusNote = statusNote; }
+    public boolean isFilledFromAverage() { return filledFromAverage; }
+    public void setFilledFromAverage(boolean filledFromAverage) { this.filledFromAverage = filledFromAverage; }
 }

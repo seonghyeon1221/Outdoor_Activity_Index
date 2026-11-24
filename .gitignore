@@ -1,13 +1,20 @@
-# API 키가 들어있는 설정 파일 (절대 커밋 금지)
+# 서비스키 · 비밀번호가 들어 있는 설정 (절대 공유 금지)
+.env
 src/main/resources/api.properties
+outdoor-index.properties
+deploy/windows/tools/defaults.properties
 
-# 빌드 결과물
-/build/
-/bin/
-/out/
-/target/
-*.class
+# 빌드 결과 · 자동으로 받는 도구 · 배포 zip (zip 안에 서비스키 포함)
+target/
+data/
+.tools/
+dist/
 *.war
+
+# 실행 기록 · 점검 결과
+*.log
+check-result.txt
+_to_delete/
 
 # IDE
 .idea/
@@ -21,6 +28,3 @@ src/main/resources/api.properties
 # OS
 .DS_Store
 Thumbs.db
-
-# 라이브러리 jar (각자 WEB-INF/lib/README.txt 보고 받기)
-src/main/webapp/WEB-INF/lib/*.jar

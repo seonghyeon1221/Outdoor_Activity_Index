@@ -1,5 +1,7 @@
 package com.outdoorindex.controller;
 
+import com.outdoorindex.dao.FavoriteDAO;
+import com.outdoorindex.dao.SearchHistoryDAO;
 import com.outdoorindex.dto.OutdoorCardDTO;
 import com.outdoorindex.enums.ErrorCode;
 import com.outdoorindex.exception.NoResultException;
@@ -31,6 +33,8 @@ public class SearchController extends HttpServlet {
     private static final String VIEW = "/WEB-INF/views/";
 
     private final OutdoorCardService outdoorCardService = new OutdoorCardService();
+    private final FavoriteDAO favoriteDAO = new FavoriteDAO();
+    private final SearchHistoryDAO historyDAO = new SearchHistoryDAO();
 
     /** 검색 화면 표시 또는 검색 실행 */
     @Override
@@ -44,29 +48,34 @@ public class SearchController extends HttpServlet {
         req.setAttribute("sido", sido);
         req.setAttribute("station", station);
 
-        // 처음 들어온 경우: 검색 화면만
+        // 처음 들어온 경우: 검색 화면 (즐겨찾기·최근 검색 함께)
         if (sidoParam == null && req.getParameter("station") == null) {
-            forward(req, resp, "search.jsp");
+            showSearch(req, resp, null);
             return;
         }
         // 시·도를 고르지 않은 경우
         if (sido.isEmpty()) {
-            req.setAttribute("errorMessage", ErrorCode.EMPTY_INPUT.getMessage());
-            forward(req, resp, "search.jsp");
+            showSearch(req, resp, ErrorCode.EMPTY_INPUT.getMessage());
             return;
         }
 
         try {
             OutdoorCardDTO card = outdoorCardService.getCard(sido, station);
             req.setAttribute("card", card);
+            // 즐겨찾기·비교에 쓸 측정소 이름 (시·도 평균이면 빈 값)
+            String favStation = card.isAirAvailable() && !card.getAir().isSidoAverage()
+                    ? card.getAir().getStationName() : station;
+            req.setAttribute("favStation", favStation == null ? "" : favStation);
+            req.setAttribute("isFavorite", favoriteDAO.exists(sido, favStation));
+            req.setAttribute("dbAvailable", com.outdoorindex.dao.Db.isAvailable());
+            historyDAO.add(sido, favStation, card.getIndex() == null ? null : card.getIndex().getLevel());
             forward(req, resp, "result.jsp");
         } catch (NoResultException e) {
             LOG.info("검색 결과 없음: " + e.getMessage());
             forward(req, resp, "noResult.jsp");
         } catch (OutdoorException e) {
             if (e.getErrorCode() == ErrorCode.EMPTY_INPUT) {
-                req.setAttribute("errorMessage", e.getErrorCode().getMessage());
-                forward(req, resp, "search.jsp");
+                showSearch(req, resp, e.getErrorCode().getMessage());
                 return;
             }
             LOG.warning("검색 처리 오류: " + e.getMessage());
@@ -84,6 +93,15 @@ public class SearchController extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         doGet(req, resp);
+    }
+
+    /** 검색 화면 (즐겨찾기·최근 검색 포함) */
+    private void showSearch(HttpServletRequest req, HttpServletResponse resp, String errorMessage)
+            throws ServletException, IOException {
+        if (errorMessage != null) req.setAttribute("errorMessage", errorMessage);
+        req.setAttribute("favorites", favoriteDAO.findAll());
+        req.setAttribute("recentSearches", historyDAO.findRecent(6));
+        forward(req, resp, "search.jsp");
     }
 
     private static void forward(HttpServletRequest req, HttpServletResponse resp, String jsp)
