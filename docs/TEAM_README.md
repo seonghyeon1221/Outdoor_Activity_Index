@@ -471,7 +471,7 @@ git push origin feature/weather
 - [x] 정상 검색 / 빈 검색어 / 없는 지역 / 없는 측정소 / 측정소 통신장애 / 잘못된 키 / 미세먼지만 실패 / 날씨만 실패 화면 확인
 - [x] 시연 대비: 응답 저장 + 오프라인 시연 모드, Windows 배포판 (`scripts/build-windows-dist.sh`)
 - [ ] `station_grid.csv` 에 서울 밖 측정소 좌표 추가 (C, 선택)
-- [ ] 보고서 작성 (`docs/보고서_초안.docx`) · 시연 리허설
+- [ ] 보고서 작성 · 시연 리허설
 
 ---
 

@@ -311,7 +311,7 @@ outdoor_activity_index/
 ├─ deploy/windows/                 Windows 설치 · 점검 스크립트 원본 (INSTALL / SETUP / START / STOP / CHECK)
 ├─ .env.example                    설정 템플릿 (.env 는 커밋 금지)
 ├─ pom.xml                         내장 Tomcat 11 · Gson · JSTL 3 · MySQL 드라이버 · H2 (Java 17)
-├─ docs/                           요구사항 · DTO 계약 · 팀 가이드 · Windows 가이드 · 보고서 초안 · 화면 캡처
+├─ docs/                           요구사항 · DTO 계약 · 팀 가이드 · Windows 가이드 · 화면 캡처
 └─ src/main/
    ├─ java/com/outdoorindex/
    │  ├─ Launcher.java             내장 Tomcat 시작 + .env 읽기
@@ -356,7 +356,6 @@ outdoor_activity_index/
 |---|---|
 | [docs/WINDOWS_GUIDE.pdf](docs/WINDOWS_GUIDE.pdf) | Windows 설치 가이드 A to Z |
 | [docs/DTO_CONTRACT.md](docs/DTO_CONTRACT.md) | DTO · 메서드 약속 (팀 공용) |
-| [docs/보고서_초안.docx](docs/보고서_초안.docx) | 제출 보고서 초안 (화면 캡처 포함) |
 | [docs/TEAM_README.md](docs/TEAM_README.md) | 개발 시작 때의 역할 분담 · 규칙 문서 |
 | [docs/PROMPT.md](docs/PROMPT.md) | 요구사항 프롬프트 (개발 시작 때) |
 | [docs/TEAM_GUIDE.pdf](docs/TEAM_GUIDE.pdf) | 팀원용 안내 |

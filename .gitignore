@@ -11,6 +11,11 @@ data/
 dist/
 *.war
 
+# 제출용 보고서 (깃에는 올리지 않음)
+*보고서*
+*.hwp
+*.hwpx
+
 # 실행 기록 · 점검 결과
 *.log
 check-result.txt
