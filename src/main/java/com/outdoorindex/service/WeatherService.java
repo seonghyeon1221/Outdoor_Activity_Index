@@ -129,12 +129,14 @@ public class WeatherService {
             if (item == null || item.category == null || item.fcstDate == null || item.fcstTime == null)
                 continue;
 
-            HourlyForecastDTO hour = byTime.computeIfAbsent(item.fcstDate + item.fcstTime, k -> {
-                HourlyForecastDTO h = new HourlyForecastDTO();
-                h.setFcstDate(item.fcstDate);
-                h.setFcstTime(item.fcstTime);
-                return h;
-            });
+            String timeKey = item.fcstDate + item.fcstTime;
+            HourlyForecastDTO hour = byTime.get(timeKey);
+            if (hour == null) {
+                hour = new HourlyForecastDTO();
+                hour.setFcstDate(item.fcstDate);
+                hour.setFcstTime(item.fcstTime);
+                byTime.put(timeKey, hour);
+            }
 
             switch (item.category) {
                 case "TMP":

@@ -4,10 +4,8 @@
   - 서블릿·필터 매핑은 어노테이션 사용: @WebServlet("/search"), @WebFilter("/*")
   - 여기에는 시작 페이지, JSP 인코딩, 오류 페이지만 설정
 -->
-<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_1.xsd"
-         version="6.1">
+<!-- 스키마 주소(xsi:schemaLocation)는 넣지 않음: 이클립스가 인터넷에서 XSD 를 못 받으면 검사 오류를 내기 때문 (Tomcat 은 필요 없음) -->
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee" version="6.1">
 
     <display-name>Outdoor Activity Index</display-name>
 
