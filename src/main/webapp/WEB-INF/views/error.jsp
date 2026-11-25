@@ -1,39 +1,22 @@
-<%-- 오류 안내 화면 (담당: D)
-     - 컨트롤러가 넘겨준 errorCode(ErrorCode)의 안내 문구 표시
-     - web.xml의 error-page(404, 500 등)로 들어온 경우 errorCode가 없으므로 기본 문구 --%>
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" session="false" %>
+<%-- 오류 화면: 지원하지 않는 시·도, 없는 주소(404), 처리 중 오류(500) --%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isErrorPage="true" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>오류 안내 | 야외활동 지수</title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css?v=3">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안내 | 야외활동 지수</title>
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
 </head>
 <body>
-
-<jsp:include page="/WEB-INF/views/common/header.jsp">
-    <jsp:param name="nav" value="" />
-</jsp:include>
-
-<main class="main-container">
-
-    <section class="empty-state">
-        <h1>요청을 처리하지 못했어요</h1>
-        <p class="error-message">
-            <c:choose>
-                <c:when test="${not empty errorCode}"><c:out value="${errorCode.message}" /></c:when>
-                <c:when test="${requestScope['jakarta.servlet.error.status_code'] eq 404}">찾는 페이지가 없어요.</c:when>
-                <c:otherwise>알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</c:otherwise>
-            </c:choose>
-        </p>
+<jsp:include page="header.jsp" />
+<main class="wrap narrow">
+    <section class="box center">
+        <%-- 404 와 그 밖의 오류를 다른 제목으로 --%>
+        <h1>${pageContext.errorData.statusCode eq 404 ? '페이지를 찾을 수 없어요' : '결과를 보여드릴 수 없어요'}</h1>
+        <p class="sub"><c:out value="${not empty message ? message : pageContext.errorData.statusCode eq 404 ? '주소를 다시 확인해 주세요.' : '잠시 후 다시 시도해 주세요.'}"/></p>
         <a class="btn" href="${pageContext.request.contextPath}/search">검색 화면으로</a>
     </section>
-
 </main>
-
-<jsp:include page="/WEB-INF/views/common/footer.jsp" />
-
 </body>
 </html>

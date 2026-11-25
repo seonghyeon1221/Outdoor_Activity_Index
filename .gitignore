@@ -1,34 +1,14 @@
-# 서비스키 · 비밀번호가 들어 있는 설정 (절대 공유 금지)
+# 서비스 키 · DB 비밀번호가 들어 있는 설정 (절대 올리지 않음)
+src/main/webapp/WEB-INF/api.properties
 .env
-src/main/resources/api.properties
-outdoor-index.properties
-deploy/windows/tools/defaults.properties
 
-# 빌드 결과 · 자동으로 받는 도구 · 배포 zip (zip 안에 서비스키 포함)
-target/
-data/
-.tools/
-dist/
-*.war
-
-# 제출용 보고서 (깃에는 올리지 않음)
-*보고서*
-*.hwp
-*.hwpx
-
-# 실행 기록 · 점검 결과
-*.log
-check-result.txt
-_to_delete/
-
-# IDE
-.idea/
-*.iml
-.vscode/
+# 이클립스 · 빌드 결과
+build/
+bin/
+.metadata/
 .settings/
 .classpath
 .project
-.metadata/
 
 # OS
 .DS_Store

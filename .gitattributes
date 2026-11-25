@@ -1,7 +1,0 @@
-# Windows 배포 파일은 줄바꿈(CRLF)과 인코딩(BOM)을 그대로 보존
-deploy/windows/** -text
-*.bat -text
-*.ps1 -text
-# 실행 스크립트는 LF 유지
-*.sh text eol=lf
-*.command text eol=lf

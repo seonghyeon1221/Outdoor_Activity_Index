@@ -1,48 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  야외활동 지수 web.xml (Tomcat 11 / Servlet 6.1)
-  - 서블릿·필터 매핑은 어노테이션 사용: @WebServlet("/search"), @WebFilter("/*")
-  - 여기에는 시작 페이지, JSP 인코딩, 오류 페이지만 설정
--->
-<!-- 스키마 주소(xsi:schemaLocation)는 넣지 않음: 이클립스가 인터넷에서 XSD 를 못 받으면 검사 오류를 내기 때문 (Tomcat 은 필요 없음) -->
+<!-- 서블릿은 @WebServlet 으로 등록. 여기서는 시작 페이지, 세션 방식, 오류 화면만 지정 -->
 <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee" version="6.1">
-
-    <display-name>Outdoor Activity Index</display-name>
-
-    <!-- 요청/응답 기본 인코딩 (EncodingFilter와 함께 이중으로 보장) -->
-    <request-character-encoding>UTF-8</request-character-encoding>
-    <response-character-encoding>UTF-8</response-character-encoding>
-
-    <!-- 세션은 쓰지 않음 (주소에 jsessionid 가 붙지 않게) -->
-    <session-config>
-        <tracking-mode>COOKIE</tracking-mode>
-    </session-config>
-
-    <!-- 모든 JSP를 UTF-8로 -->
-    <jsp-config>
-        <jsp-property-group>
-            <url-pattern>*.jsp</url-pattern>
-            <page-encoding>UTF-8</page-encoding>
-            <trim-directive-whitespaces>true</trim-directive-whitespaces>
-        </jsp-property-group>
-    </jsp-config>
-
-    <!-- 시작 페이지: index.jsp → /search 로 이동 -->
     <welcome-file-list>
         <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
-
-    <!-- 처리되지 않은 오류는 공통 오류 화면으로 -->
+    <session-config>
+        <tracking-mode>COOKIE</tracking-mode>   <!-- 주소에 ;jsessionid 가 붙지 않게 -->
+    </session-config>
     <error-page>
-        <error-code>404</error-code>
-        <location>/WEB-INF/views/error.jsp</location>
-    </error-page>
-    <error-page>
-        <error-code>500</error-code>
-        <location>/WEB-INF/views/error.jsp</location>
-    </error-page>
-    <error-page>
-        <exception-type>java.lang.Throwable</exception-type>
         <location>/WEB-INF/views/error.jsp</location>
     </error-page>
 </web-app>

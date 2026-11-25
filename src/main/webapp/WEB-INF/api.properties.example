@@ -1,0 +1,12 @@
+# Outdoor Activity Index settings (read directly from WEB-INF by MainController)
+# Copy this file to api.properties (same folder) and fill in the values.
+# Restart the server after changing a value. Do NOT upload api.properties to GitHub.
+
+# data.go.kr service key (Decoding key)
+service.key=
+
+# MySQL (favorites). Put this PC's MySQL password after db.password=
+# The database and the table are created automatically on first use.
+db.url=jdbc:mysql://localhost:3306/outdoor_index
+db.user=root
+db.password=
